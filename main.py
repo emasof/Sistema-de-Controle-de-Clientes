@@ -13,9 +13,10 @@ from controller import Controller
 from login_screen import LoginScreen
 
 class MainScreen(Screen):
-    def __init__(self, controller=None, **kwargs):
+    def __init__(self, controller=None, app=None, **kwargs):
         super().__init__(**kwargs)
-        self.controlador = controller  # Recebe o controller do build
+        self.controlador = controller
+        self.app = app  # Recebe a instância do app aqui
         self.edit_mode = False
         self.criar_interface()
         self.atualizar_tabela()
@@ -32,7 +33,9 @@ class MainScreen(Screen):
         self.layout_principal.bind(size=self.atualizar_fundo, pos=self.atualizar_fundo)
 
         self.layout_titulo = BoxLayout(size_hint_y=None, height=50)
-        self.titulo = Label(text="MAPA DE CONTROLE", color=(242/255, 81/255, 81/255, 1), font_size=30, bold=True)
+        # Usa self.app.version com segurança, pois app é passado no __init__
+        self.titulo = Label(text=f"MAPA DE CONTROLE - v{self.app.version}",
+                           color=(242/255, 81/255, 81/255, 1), font_size=30, bold=True)
         self.layout_titulo.add_widget(self.titulo)
         self.layout_principal.add_widget(self.layout_titulo)
 
@@ -176,14 +179,16 @@ class MainScreen(Screen):
         popup.open()
 
 class PrizaCreditoApp(App):
+    version = "1.0.0"  # Define a versão do aplicativo
+
     def build(self):
         screen_manager = ScreenManager()
-        controller = Controller("clientes.db")  # Cria uma única instância do Controller
+        controller = Controller("clientes.db")
 
         login_screen = LoginScreen(controller=controller, name="login")
         screen_manager.add_widget(login_screen)
 
-        main_screen = MainScreen(controller=controller, name="main")  # Passa o controller para MainScreen
+        main_screen = MainScreen(controller=controller, app=self, name="main")  # Passa o app aqui
         screen_manager.add_widget(main_screen)
 
         return screen_manager
