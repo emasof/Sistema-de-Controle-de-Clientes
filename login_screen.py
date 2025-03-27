@@ -7,10 +7,24 @@ from kivy.uix.label import Label
 from kivy.graphics import Rectangle, Color
 from kivy.core.window import Window
 
-
 class LoginScreen(Screen):
-    def __init__(self, **kwargs):
+    def verify_credentials(self, instance):
+        username = self.username_input.text.strip()
+        password = self.password_input.text.strip()
+        print(f"Tentativa de login - Usuário: '{username}', Senha: '{password}'")
+        print(f"Controller: {self.controller}")
+
+        if self.controller and self.controller.validar_credenciais(username, password):
+            print("Credenciais válidas! Redirecionando para 'main'...")
+            self.message_label.text = ""
+            self.manager.current = "main"
+        else:
+            print("Credenciais inválidas.")
+            self.message_label.text = "Usuário ou senha inválidos."
+
+    def __init__(self, controller=None, **kwargs):
         super().__init__(**kwargs)
+        self.controller = controller  # Armazena o controller recebido
 
         # Layout Principal
         self.layout = BoxLayout(orientation="vertical", padding=20, spacing=20)
@@ -78,13 +92,11 @@ class LoginScreen(Screen):
         self.bg_rect.pos = self.pos
 
     def verify_credentials(self, instance):
-        """Verifica credenciais do usuário."""
         username = self.username_input.text.strip()
         password = self.password_input.text.strip()
 
-        # Validação simples
-        if username == "admin" and password == "1234":
+        if self.controller and self.controller.validar_credenciais(username, password):
             self.message_label.text = ""
-            self.manager.current = "main"  # Redireciona para a tela principal
+            self.manager.current = "main"
         else:
             self.message_label.text = "Usuário ou senha inválidos."

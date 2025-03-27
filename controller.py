@@ -1,60 +1,33 @@
 # controller.py
 import sqlite3
+from database import BancoDeDados
 
 class Controller:
     def __init__(self, database_path):
-        """Inicializa o controlador com o caminho do banco de dados."""
         self.database_path = database_path
-        self.conexao = None
+        self.banco = BancoDeDados(database_path)
 
     def connect_to_database(self):
-        """Estabelece conexão com o banco de dados, se não estiver conectada."""
-        if not self.conexao:
-            try:
-                self.conexao = sqlite3.connect(self.database_path)
-                print("Database connection established successfully.")
-            except sqlite3.Error as e:
-                print(f"Error connecting to database: {e}")
-                self.conexao = None
+        pass
 
     def close_connection(self):
-        """Fecha a conexão com o banco de dados."""
-        if self.conexao:
-            self.conexao.close()
-            self.conexao = None
-            print("Database connection closed.")
+        self.banco.fechar_conexao()
 
-    def executar_query(self, query, params=None):
-        """
-        Executa uma query no banco de dados e retorna os resultados.
-        Fecha automaticamente o cursor após a execução.
-        """
-        if self.conexao is None:
-            raise ConnectionError("No database connection established.")
-        try:
-            cursor = self.conexao.cursor()
-            if params:
-                cursor.execute(query, params)
-            else:
-                cursor.execute(query)
-            self.conexao.commit()
-            return cursor.fetchall()
-        except sqlite3.Error as e:
-            print(f"Error executing query: {e}")
-            return None
-        finally:
-            if cursor:
-                cursor.close()
+    def registrar_cliente(self, numero_processo, nome, pacote):
+        """Registra um novo cliente e retorna True se bem-sucedido, False se duplicado."""
+        return self.banco.adicionar_cliente(numero_processo, nome, pacote)
 
-    def pesquisar_cliente(self, filtro, campos='*'):
-        """
-        Pesquisa clientes com base em um filtro e nos campos especificados.
-        Retorna todos os registros se o filtro for 'todos'.
-        """
+    def pesquisar_cliente(self, filtro, valor):
         if filtro == 'todos':
-            query = f"SELECT {campos} FROM clientes"
-            params = None
-        else:
-            query = f"SELECT {campos} FROM clientes WHERE nome LIKE ?"
-            params = (f"%{filtro}%",)
-        return self.executar_query(query, params)
+            return self.banco.buscar_clientes()
+        elif filtro == 'numero_processo':
+            return self.banco.buscar_clientes('numero_processo', valor)
+        elif filtro == 'nome':
+            return self.banco.buscar_clientes('nome', valor)
+        return []
+
+    def excluir_cliente(self, numero_processo):
+        self.banco.executar("DELETE FROM clientes WHERE numero_processo = ?", (numero_processo,))
+
+    def validar_credenciais(self, username, password):
+        return self.banco.validar_credenciais(username, password)
