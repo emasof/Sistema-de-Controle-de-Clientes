@@ -11,12 +11,17 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from controller import Controller
 from login_screen import LoginScreen
+from openpyxl import Workbook
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from reportlab.lib import colors
+
 
 class MainScreen(Screen):
     def __init__(self, controller=None, app=None, **kwargs):
         super().__init__(**kwargs)
         self.controlador = controller
-        self.app = app  # Recebe a instância do app aqui
+        self.app = app
         self.edit_mode = False
         self.criar_interface()
         self.atualizar_tabela()
@@ -33,30 +38,32 @@ class MainScreen(Screen):
         self.layout_principal.bind(size=self.atualizar_fundo, pos=self.atualizar_fundo)
 
         self.layout_titulo = BoxLayout(size_hint_y=None, height=50)
-        # Usa self.app.version com segurança, pois app é passado no __init__
         self.titulo = Label(text=f"MAPA DE CONTROLE - v{self.app.version}",
-                           color=(242/255, 81/255, 81/255, 1), font_size=30, bold=True)
+                            color=(242 / 255, 81 / 255, 81 / 255, 1), font_size=30, bold=True)
         self.layout_titulo.add_widget(self.titulo)
         self.layout_principal.add_widget(self.layout_titulo)
 
         self.barra_superior = BoxLayout(size_hint_y=None, height=50, spacing=10)
-        self.campo_pesquisa = TextInput(hint_text='Pesquisar: Nome ou Nº do Processo', size_hint=(0.7, None), height=40)
-        self.botao_pesquisar = Button(text="Pesquisar", size_hint=(0.10, None), height=40)
+        self.campo_pesquisa = TextInput(hint_text='Pesquisar: Nome ou Nº do Processo', size_hint=(0.6, None), height=40)
+        self.botao_pesquisar = Button(text="Pesquisar", size_hint=(0.1, None), height=40)
         self.botao_pesquisar.bind(on_press=self.pesquisar_cliente)
-        self.botao_cadastrar = Button(text="Cadastrar Cliente", size_hint=(0.17, None), height=40)
+        self.botao_cadastrar = Button(text="Cadastrar Cliente", size_hint=(0.15, None), height=40)
         self.botao_cadastrar.bind(on_press=self.ir_para_cadastro)
         self.botao_editar = Button(text="Editar", size_hint=(0.1, None), height=40)
         self.botao_editar.bind(on_press=self.ativar_edicao)
+        self.botao_exportar = Button(text="Exportar", size_hint=(0.15, None), height=40)
+        self.botao_exportar.bind(on_press=self.abrir_menu_exportar)
 
         self.barra_superior.add_widget(self.campo_pesquisa)
         self.barra_superior.add_widget(self.botao_pesquisar)
         self.barra_superior.add_widget(self.botao_cadastrar)
         self.barra_superior.add_widget(self.botao_editar)
+        self.barra_superior.add_widget(self.botao_exportar)
         self.layout_principal.add_widget(self.barra_superior)
 
         self.layout_cabecalho = BoxLayout(size_hint_y=None, height=40)
         with self.layout_cabecalho.canvas.before:
-            Color(181/255, 117/255, 117/255, 1)
+            Color(181 / 255, 117 / 255, 117 / 255, 1)
             self.rect_cabecalho = Rectangle(size=self.layout_cabecalho.size, pos=self.layout_cabecalho.pos)
         self.layout_cabecalho.bind(size=self.atualizar_fundo_cabecalho, pos=self.atualizar_fundo_cabecalho)
 
@@ -95,7 +102,8 @@ class MainScreen(Screen):
             self.tabela.add_widget(TextInput(text=pacote, multiline=False, disabled=not self.edit_mode))
 
             if self.edit_mode:
-                botao_excluir = Button(text="Excluir", size_hint=(0.1, 1), background_color=(1, 0.2, 0.2, 1), color=(1, 1, 1, 1))
+                botao_excluir = Button(text="Excluir", size_hint=(0.1, 1), background_color=(1, 0.2, 0.2, 1),
+                                       color=(1, 1, 1, 1))
                 botao_excluir.bind(on_press=lambda _, processo=numero_processo: self.confirmar_exclusao(processo))
                 self.tabela.add_widget(botao_excluir)
             else:
@@ -174,9 +182,71 @@ class MainScreen(Screen):
         popup_cadastro = Popup(title="Cadastro de Cliente", content=layout, size_hint=(0.6, 0.6))
         popup_cadastro.open()
 
+    def abrir_menu_exportar(self, _):
+        """Abre um popup com opções de exportação."""
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        botao_xlsx = Button(text="Exportar para XLSX")
+        botao_pdf = Button(text="Exportar para PDF")
+        botao_cancelar = Button(text="Cancelar")
+
+        # Criar o popup antes de vincular os eventos
+        popup = Popup(title="Opções de Exportação", content=layout, size_hint=(0.4, 0.4))
+
+        # Agora vincular os eventos com o popup já definido
+        botao_xlsx.bind(on_press=lambda _: (self.exportar_xlsx(), popup.dismiss()))
+        botao_pdf.bind(on_press=lambda _: (self.exportar_pdf(), popup.dismiss()))
+        botao_cancelar.bind(on_press=lambda _: popup.dismiss())
+
+        layout.add_widget(botao_xlsx)
+        layout.add_widget(botao_pdf)
+        layout.add_widget(botao_cancelar)
+        popup.open()
+
+    def exportar_xlsx(self):
+        """Exporta os dados dos clientes para um arquivo Excel."""
+        clientes = self.controlador.banco.buscar_clientes()
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Clientes"
+        ws.append(["Nº do Processo", "Nome do Cliente", "Pacote"])  # Cabeçalhos
+
+        for cliente in clientes:
+            ws.append([cliente[1], cliente[2], cliente[3]])  # numero_processo, nome, pacote
+
+        wb.save("clientes_exportados.xlsx")
+        Popup(title="Sucesso", content=Label(text="Dados exportados para clientes_exportados.xlsx"),
+              size_hint=(0.5, 0.5)).open()
+
+    def exportar_pdf(self):
+        """Exporta os dados dos clientes para um arquivo PDF."""
+        clientes = self.controlador.banco.buscar_clientes()
+        pdf = SimpleDocTemplate("clientes_exportados.pdf", pagesize=letter)
+        data = [["Nº do Processo", "Nome do Cliente", "Pacote"]]  # Cabeçalhos
+
+        for cliente in clientes:
+            data.append([cliente[1], cliente[2], cliente[3]])  # numero_processo, nome, pacote
+
+        tabela = Table(data)
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ]))
+
+        elementos = [tabela]
+        pdf.build(elementos)
+        Popup(title="Sucesso", content=Label(text="Dados exportados para clientes_exportados.pdf"),
+              size_hint=(0.5, 0.5)).open()
+
     def mostrar_erro(self, mensagem):
         popup = Popup(title="Erro", content=Label(text=mensagem), size_hint=(0.5, 0.5))
         popup.open()
+
 
 class PrizaCreditoApp(App):
     version = "1.0.0"  # Define a versão do aplicativo
@@ -188,10 +258,11 @@ class PrizaCreditoApp(App):
         login_screen = LoginScreen(controller=controller, name="login")
         screen_manager.add_widget(login_screen)
 
-        main_screen = MainScreen(controller=controller, app=self, name="main")  # Passa o app aqui
+        main_screen = MainScreen(controller=controller, app=self, name="main")
         screen_manager.add_widget(main_screen)
 
         return screen_manager
+
 
 if __name__ == "__main__":
     PrizaCreditoApp().run()
