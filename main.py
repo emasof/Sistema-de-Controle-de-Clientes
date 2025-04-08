@@ -15,6 +15,12 @@ from openpyxl import Workbook
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
+import os
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class MainScreen(Screen):
@@ -23,6 +29,7 @@ class MainScreen(Screen):
         self.controlador = controller
         self.app = app
         self.edit_mode = False
+        logger.debug("Inicializando MainScreen")
         self.criar_interface()
         self.atualizar_tabela()
 
@@ -77,6 +84,7 @@ class MainScreen(Screen):
         self.layout_principal.add_widget(self.scrollview)
 
         self.add_widget(self.layout_principal)
+        logger.debug("Interface da MainScreen criada")
 
     def atualizar_fundo(self, *args):
         self.rect.pos = self.layout_principal.pos
@@ -183,16 +191,13 @@ class MainScreen(Screen):
         popup_cadastro.open()
 
     def abrir_menu_exportar(self, _):
-        """Abre um popup com opções de exportação."""
         layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
         botao_xlsx = Button(text="Exportar para XLSX")
         botao_pdf = Button(text="Exportar para PDF")
         botao_cancelar = Button(text="Cancelar")
 
-        # Criar o popup antes de vincular os eventos
         popup = Popup(title="Opções de Exportação", content=layout, size_hint=(0.4, 0.4))
 
-        # Agora vincular os eventos com o popup já definido
         botao_xlsx.bind(on_press=lambda _: (self.exportar_xlsx(), popup.dismiss()))
         botao_pdf.bind(on_press=lambda _: (self.exportar_pdf(), popup.dismiss()))
         botao_cancelar.bind(on_press=lambda _: popup.dismiss())
@@ -203,29 +208,23 @@ class MainScreen(Screen):
         popup.open()
 
     def exportar_xlsx(self):
-        """Exporta os dados dos clientes para um arquivo Excel."""
         clientes = self.controlador.banco.buscar_clientes()
         wb = Workbook()
         ws = wb.active
         ws.title = "Clientes"
-        ws.append(["Nº do Processo", "Nome do Cliente", "Pacote"])  # Cabeçalhos
-
+        ws.append(["Nº do Processo", "Nome do Cliente", "Pacote"])
         for cliente in clientes:
-            ws.append([cliente[1], cliente[2], cliente[3]])  # numero_processo, nome, pacote
-
+            ws.append([cliente[1], cliente[2], cliente[3]])
         wb.save("clientes_exportados.xlsx")
         Popup(title="Sucesso", content=Label(text="Dados exportados para clientes_exportados.xlsx"),
               size_hint=(0.5, 0.5)).open()
 
     def exportar_pdf(self):
-        """Exporta os dados dos clientes para um arquivo PDF."""
         clientes = self.controlador.banco.buscar_clientes()
         pdf = SimpleDocTemplate("clientes_exportados.pdf", pagesize=letter)
-        data = [["Nº do Processo", "Nome do Cliente", "Pacote"]]  # Cabeçalhos
-
+        data = [["Nº do Processo", "Nome do Cliente", "Pacote"]]
         for cliente in clientes:
-            data.append([cliente[1], cliente[2], cliente[3]])  # numero_processo, nome, pacote
-
+            data.append([cliente[1], cliente[2], cliente[3]])
         tabela = Table(data)
         tabela.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
@@ -237,7 +236,6 @@ class MainScreen(Screen):
             ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ]))
-
         elementos = [tabela]
         pdf.build(elementos)
         Popup(title="Sucesso", content=Label(text="Dados exportados para clientes_exportados.pdf"),
@@ -249,20 +247,74 @@ class MainScreen(Screen):
 
 
 class PrizaCreditoApp(App):
-    version = "1.0.0"  # Define a versão do aplicativo
+    version = "1.0.0"
 
     def build(self):
-        screen_manager = ScreenManager()
+        logger.debug("Iniciando construção da interface")
+        self.screen_manager = ScreenManager()
+        # Não adicionamos telas ainda, vamos fazer isso após o cadastro na primeira execução
+        return self.screen_manager
+
+    def on_start(self):
+        logger.debug("Método on_start chamado")
+        if not os.path.exists("clientes.db"):
+            logger.info("Primeira execução detectada, solicitando cadastro de login")
+            self.solicitar_cadastro_login()
+        else:
+            logger.debug("Não é a primeira execução, carregando tela de login")
+            self.carregar_telas()
+
+    def solicitar_cadastro_login(self):
+        logger.debug("Abrindo popup de cadastro de login")
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        label_info = Label(text="Cadastre um usuário e senha para o sistema:")
+        campo_usuario = TextInput(hint_text="Usuário")
+        campo_senha = TextInput(hint_text="Senha", password=True)
+        botao_cadastrar = Button(text="Cadastrar")
+
+        def cadastrar_login(_):
+            usuario = campo_usuario.text.strip()
+            senha = campo_senha.text.strip()
+            logger.debug(f"Tentando cadastrar usuário: {usuario}")
+            if usuario and senha:
+                controller = Controller("clientes.db")
+                if controller.registrar_usuario(usuario, senha):
+                    logger.info("Usuário cadastrado com sucesso")
+                    popup.dismiss()
+                    Popup(title="Sucesso", content=Label(text="Usuário cadastrado com sucesso!"),
+                          size_hint=(0.5, 0.5)).open()
+                    self.carregar_telas()  # Carrega as telas após o cadastro
+                else:
+                    logger.error("Erro ao cadastrar usuário (possível duplicata)")
+                    Popup(title="Erro", content=Label(text="Usuário já existe!"),
+                          size_hint=(0.5, 0.5)).open()
+            else:
+                logger.warning("Campos de usuário ou senha vazios")
+                Popup(title="Erro", content=Label(text="Preencha todos os campos!"),
+                      size_hint=(0.5, 0.5)).open()
+
+        botao_cadastrar.bind(on_press=cadastrar_login)
+        layout.add_widget(label_info)
+        layout.add_widget(campo_usuario)
+        layout.add_widget(campo_senha)
+        layout.add_widget(botao_cadastrar)
+        popup = Popup(title="Cadastro Inicial", content=layout, size_hint=(0.6, 0.6), auto_dismiss=False)
+        popup.open()
+        logger.debug("Popup de cadastro aberto")
+
+    def carregar_telas(self):
+        """Carrega as telas de login e principal no ScreenManager."""
+        logger.debug("Carregando telas de login e principal")
         controller = Controller("clientes.db")
-
         login_screen = LoginScreen(controller=controller, name="login")
-        screen_manager.add_widget(login_screen)
-
+        self.screen_manager.add_widget(login_screen)
         main_screen = MainScreen(controller=controller, app=self, name="main")
-        screen_manager.add_widget(main_screen)
-
-        return screen_manager
+        self.screen_manager.add_widget(main_screen)
+        self.screen_manager.current = "login"
+        logger.debug("Telas carregadas, definindo tela inicial como 'login'")
 
 
 if __name__ == "__main__":
+    logger.debug("Iniciando aplicação")
     PrizaCreditoApp().run()
+    logger.debug("Aplicação encerrada")
