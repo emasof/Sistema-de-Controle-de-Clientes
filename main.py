@@ -294,11 +294,56 @@ class PrizaCreditoApp(App):
 
     def solicitar_cadastro_login(self):
         logger.debug("Abrindo popup de cadastro de login")
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        label_info = Label(text="Cadastre um usuário e senha para o sistema:")
-        campo_usuario = TextInput(hint_text="Usuário")
-        campo_senha = TextInput(hint_text="Senha", password=True)
-        botao_cadastrar = Button(text="Cadastrar")
+        layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
+
+        # Fundo sólido azul-escuro para o popup
+        with layout.canvas.before:
+            Color(0.1, 0.3, 0.6, 1)  # Azul-escuro sólido
+            self.popup_rect = Rectangle(size=layout.size, pos=layout.pos)  # Ajustado para seguir o tamanho do layout
+
+        # Ajustar o tamanho e posição do fundo dinamicamente
+        layout.bind(pos=lambda instance, value: setattr(self.popup_rect, 'pos', value),
+                    size=lambda instance, value: setattr(self.popup_rect, 'size', value))
+
+        # Título estilizado
+        label_info = Label(text="Crie seu Acesso", font_size=28, bold=True,
+                           color=(1, 1, 1, 1), size_hint=(1, None), height=50)
+
+        # Campo de usuário com cores forçadas
+        campo_usuario = TextInput(hint_text="Usuário", multiline=False, size_hint=(1, None), height=50,
+                                  background_color=(1, 1, 1, 1),  # Fundo branco opaco
+                                  foreground_color=(0, 0, 0, 1),  # Texto preto
+                                  hint_text_color=(0.4, 0.4, 0.4, 1),  # Hint cinza médio
+                                  cursor_color=(0.1, 0.3, 0.6, 1),  # Cursor azul-escuro
+                                  padding=[15, 15])
+        with campo_usuario.canvas.before:
+            Color(1, 1, 1, 1)  # Fundo branco para o campo
+            usuario_rect = Rectangle(pos=campo_usuario.pos, size=campo_usuario.size, radius=[10])
+        campo_usuario.bind(pos=lambda instance, value: setattr(usuario_rect, 'pos', value),
+                           size=lambda instance, value: setattr(usuario_rect, 'size', value))
+
+        # Campo de senha com cores forçadas
+        campo_senha = TextInput(hint_text="Senha", password=True, multiline=False, size_hint=(1, None), height=50,
+                                background_color=(1, 1, 1, 1),  # Fundo branco opaco
+                                foreground_color=(0, 0, 0, 1),  # Texto preto
+                                hint_text_color=(0.4, 0.4, 0.4, 1),  # Hint cinza médio
+                                cursor_color=(0.1, 0.3, 0.6, 1),  # Cursor azul-escuro
+                                padding=[15, 15])
+        with campo_senha.canvas.before:
+            Color(1, 1, 1, 1)  # Fundo branco para o campo
+            senha_rect = Rectangle(pos=campo_senha.pos, size=campo_senha.size, radius=[10])
+        campo_senha.bind(pos=lambda instance, value: setattr(senha_rect, 'pos', value),
+                         size=lambda instance, value: setattr(senha_rect, 'size', value))
+
+        # Botão estilizado
+        botao_cadastrar = Button(text="Cadastrar", size_hint=(1, None), height=50,
+                                 background_normal='', background_color=(0.1, 0.3, 0.6, 1),  # Azul-escuro
+                                 color=(1, 1, 1, 1), font_size=18)
+        with botao_cadastrar.canvas.before:
+            Color(0.1, 0.3, 0.6, 1)
+            self.botao_rect = Rectangle(pos=botao_cadastrar.pos, size=botao_cadastrar.size, radius=[15])
+        botao_cadastrar.bind(pos=lambda instance, value: setattr(self.botao_rect, 'pos', value),
+                             size=lambda instance, value: setattr(self.botao_rect, 'size', value))
 
         def cadastrar_login(_):
             usuario = campo_usuario.text.strip()
@@ -322,11 +367,16 @@ class PrizaCreditoApp(App):
                       size_hint=(0.5, 0.5)).open()
 
         botao_cadastrar.bind(on_press=cadastrar_login)
+
+        # Adicionar widgets ao layout
         layout.add_widget(label_info)
         layout.add_widget(campo_usuario)
         layout.add_widget(campo_senha)
         layout.add_widget(botao_cadastrar)
-        popup = Popup(title="Cadastro Inicial", content=layout, size_hint=(0.6, 0.6), auto_dismiss=False)
+
+        # Criar o popup com tamanho fixo
+        popup = Popup(title=" ", content=layout, size_hint=(None, None), size=(400, 400),
+                      auto_dismiss=False, background_color=(0, 0, 0, 0))
         popup.open()
         logger.debug("Popup de cadastro aberto")
 
