@@ -16,6 +16,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from reportlab.lib import colors
 import os
+import shutil
+import datetime
 import logging
 
 # Configurar logging
@@ -51,21 +53,24 @@ class MainScreen(Screen):
         self.layout_principal.add_widget(self.layout_titulo)
 
         self.barra_superior = BoxLayout(size_hint_y=None, height=50, spacing=10)
-        self.campo_pesquisa = TextInput(hint_text='Pesquisar: Nome ou Nº do Processo', size_hint=(0.6, None), height=40)
+        self.campo_pesquisa = TextInput(hint_text='Pesquisar: Nome ou Nº do Processo', size_hint=(0.5, None), height=40)
         self.botao_pesquisar = Button(text="Pesquisar", size_hint=(0.1, None), height=40)
         self.botao_pesquisar.bind(on_press=self.pesquisar_cliente)
         self.botao_cadastrar = Button(text="Cadastrar Cliente", size_hint=(0.15, None), height=40)
         self.botao_cadastrar.bind(on_press=self.ir_para_cadastro)
         self.botao_editar = Button(text="Editar", size_hint=(0.1, None), height=40)
         self.botao_editar.bind(on_press=self.ativar_edicao)
-        self.botao_exportar = Button(text="Exportar", size_hint=(0.15, None), height=40)
+        self.botao_exportar = Button(text="Exportar", size_hint=(0.1, None), height=40)
         self.botao_exportar.bind(on_press=self.abrir_menu_exportar)
+        self.botao_backup = Button(text="Backup", size_hint=(0.1, None), height=40)
+        self.botao_backup.bind(on_press=self.fazer_backup)
 
         self.barra_superior.add_widget(self.campo_pesquisa)
         self.barra_superior.add_widget(self.botao_pesquisar)
         self.barra_superior.add_widget(self.botao_cadastrar)
         self.barra_superior.add_widget(self.botao_editar)
         self.barra_superior.add_widget(self.botao_exportar)
+        self.barra_superior.add_widget(self.botao_backup)
         self.layout_principal.add_widget(self.barra_superior)
 
         self.layout_cabecalho = BoxLayout(size_hint_y=None, height=40)
@@ -241,6 +246,30 @@ class MainScreen(Screen):
         Popup(title="Sucesso", content=Label(text="Dados exportados para clientes_exportados.pdf"),
               size_hint=(0.5, 0.5)).open()
 
+    def fazer_backup(self, _):
+        """Cria um backup local do arquivo clientes.db."""
+        logger.debug("Iniciando processo de backup")
+        try:
+            # Define o diretório de backups
+            backup_dir = "backups"
+            if not os.path.exists(backup_dir):
+                os.makedirs(backup_dir)
+                logger.debug(f"Pasta de backups criada: {backup_dir}")
+
+            # Gera o nome do arquivo com timestamp
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M")
+            backup_file = os.path.join(backup_dir, f"clientes_{timestamp}.db")
+
+            # Copia o arquivo clientes.db para o diretório de backups
+            shutil.copy("clientes.db", backup_file)
+            logger.info(f"Backup criado com sucesso: {backup_file}")
+            Popup(title="Sucesso", content=Label(text=f"Backup criado em {backup_file}"),
+                  size_hint=(0.5, 0.5)).open()
+        except Exception as e:
+            logger.error(f"Erro ao criar backup: {str(e)}")
+            Popup(title="Erro", content=Label(text="Falha ao criar backup!"),
+                  size_hint=(0.5, 0.5)).open()
+
     def mostrar_erro(self, mensagem):
         popup = Popup(title="Erro", content=Label(text=mensagem), size_hint=(0.5, 0.5))
         popup.open()
@@ -252,7 +281,6 @@ class PrizaCreditoApp(App):
     def build(self):
         logger.debug("Iniciando construção da interface")
         self.screen_manager = ScreenManager()
-        # Não adicionamos telas ainda, vamos fazer isso após o cadastro na primeira execução
         return self.screen_manager
 
     def on_start(self):
@@ -283,7 +311,7 @@ class PrizaCreditoApp(App):
                     popup.dismiss()
                     Popup(title="Sucesso", content=Label(text="Usuário cadastrado com sucesso!"),
                           size_hint=(0.5, 0.5)).open()
-                    self.carregar_telas()  # Carrega as telas após o cadastro
+                    self.carregar_telas()
                 else:
                     logger.error("Erro ao cadastrar usuário (possível duplicata)")
                     Popup(title="Erro", content=Label(text="Usuário já existe!"),
@@ -303,7 +331,6 @@ class PrizaCreditoApp(App):
         logger.debug("Popup de cadastro aberto")
 
     def carregar_telas(self):
-        """Carrega as telas de login e principal no ScreenManager."""
         logger.debug("Carregando telas de login e principal")
         controller = Controller("clientes.db")
         login_screen = LoginScreen(controller=controller, name="login")
