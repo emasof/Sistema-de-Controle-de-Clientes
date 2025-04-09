@@ -299,9 +299,8 @@ class PrizaCreditoApp(App):
         # Fundo sólido azul-escuro para o popup
         with layout.canvas.before:
             Color(0.1, 0.3, 0.6, 1)  # Azul-escuro sólido
-            self.popup_rect = Rectangle(size=layout.size, pos=layout.pos)  # Ajustado para seguir o tamanho do layout
+            self.popup_rect = Rectangle(size=layout.size, pos=layout.pos)
 
-        # Ajustar o tamanho e posição do fundo dinamicamente
         layout.bind(pos=lambda instance, value: setattr(self.popup_rect, 'pos', value),
                     size=lambda instance, value: setattr(self.popup_rect, 'size', value))
 
@@ -309,31 +308,21 @@ class PrizaCreditoApp(App):
         label_info = Label(text="Crie seu Acesso", font_size=28, bold=True,
                            color=(1, 1, 1, 1), size_hint=(1, None), height=50)
 
-        # Campo de usuário com cores forçadas
+        # Campo de usuário sem canvas, apenas propriedades nativas
         campo_usuario = TextInput(hint_text="Usuário", multiline=False, size_hint=(1, None), height=50,
                                   background_color=(1, 1, 1, 1),  # Fundo branco opaco
                                   foreground_color=(0, 0, 0, 1),  # Texto preto
                                   hint_text_color=(0.4, 0.4, 0.4, 1),  # Hint cinza médio
                                   cursor_color=(0.1, 0.3, 0.6, 1),  # Cursor azul-escuro
                                   padding=[15, 15])
-        with campo_usuario.canvas.before:
-            Color(1, 1, 1, 1)  # Fundo branco para o campo
-            usuario_rect = Rectangle(pos=campo_usuario.pos, size=campo_usuario.size, radius=[10])
-        campo_usuario.bind(pos=lambda instance, value: setattr(usuario_rect, 'pos', value),
-                           size=lambda instance, value: setattr(usuario_rect, 'size', value))
 
-        # Campo de senha com cores forçadas
+        # Campo de senha sem canvas, apenas propriedades nativas
         campo_senha = TextInput(hint_text="Senha", password=True, multiline=False, size_hint=(1, None), height=50,
                                 background_color=(1, 1, 1, 1),  # Fundo branco opaco
                                 foreground_color=(0, 0, 0, 1),  # Texto preto
                                 hint_text_color=(0.4, 0.4, 0.4, 1),  # Hint cinza médio
                                 cursor_color=(0.1, 0.3, 0.6, 1),  # Cursor azul-escuro
                                 padding=[15, 15])
-        with campo_senha.canvas.before:
-            Color(1, 1, 1, 1)  # Fundo branco para o campo
-            senha_rect = Rectangle(pos=campo_senha.pos, size=campo_senha.size, radius=[10])
-        campo_senha.bind(pos=lambda instance, value: setattr(senha_rect, 'pos', value),
-                         size=lambda instance, value: setattr(senha_rect, 'size', value))
 
         # Botão estilizado
         botao_cadastrar = Button(text="Cadastrar", size_hint=(1, None), height=50,
