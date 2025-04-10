@@ -1,0 +1,4 @@
+kivy
+bcrypt
+openpyxl
+reportlab
